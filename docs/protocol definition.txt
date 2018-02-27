@@ -1,0 +1,36 @@
+General Protocol Design
+
+protocol_id = 1 byte 
+body length = 1 byte 
+device_id = 1 byte 
+device_command = Variable length
+Hour = 1 byte
+Second =  1 byte
+Checksum = 1 byte
+
+Protocol Id is a5 for everything that is transmitted.
+body length does not include protocol_id and device length. (Equal to total length - 2 bytes)
+
+
+
+SetUpDeviceCommand from Server
+
+protocol_id = a5
+body_length = 5
+device_id = 00
+device_command = 00
+hour = hour.now
+Second=second.now
+Checksum = 1 byte
+
+RecieveDeviceCommandFromServer
+
+protocol_id = a5
+body_length = 5
+device_id = From Assigned Device
+device_command = 01
+hour = hour.now
+Second=second.now
+Checksum = 1 byt
+
+

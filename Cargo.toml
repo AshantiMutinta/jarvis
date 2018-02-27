@@ -1,0 +1,8 @@
+[package]
+name = "Jarvis"
+version = "0.1.0"
+authors = ["Ashanti Mutinta"]
+
+[dependencies]
+time = "0.1"
+checksum="0.2.1"
