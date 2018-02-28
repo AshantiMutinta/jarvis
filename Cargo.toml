@@ -5,4 +5,4 @@ authors = ["Ashanti Mutinta"]
 
 [dependencies]
 time = "0.1"
-checksum="0.2.1"
+crc = "^1.0.0"
