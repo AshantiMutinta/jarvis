@@ -51,9 +51,10 @@ fn main()
 {
     println!("Starting Jarvis");
     println!("Checking For Devices");
-    let udp_socket = UdpSocket::bind("127.0.0.1:34254").expect("COULD NOT BIND TO UDP PACKET");
+    let udp_socket = UdpSocket::bind("127.0.0.1:62345").expect("COULD NOT BIND TO UDP PACKET");
     set_up_socket(&udp_socket).expect("could not set up socket");
     let devices = set_up_devices(&udp_socket);
+    
     
 }
 
@@ -131,8 +132,45 @@ fn get_checksum(bytes : &[u8]) -> u32
 
 fn retrieve_devices(udp_socket : &UdpSocket) -> Vec<Device>
 {
-     unimplemented!("could not retrieve devices")
+    let mut devices : Vec<Device> = vec![];
+    match udp_socket.connect("0.0.0.0:62345")
+    {
+        Ok(result) =>
+        {
+            let mut buffer = [0,128];
+            match udp_socket.recv(&mut buffer)
+            {
+                Ok(success) =>
+                {
+                    match get_device_from_bytes(&buffer)
+                    {
+                        Ok(device_from_buffer) =>
+                        {
+                            devices.push(device_from_buffer);
+                            devices.extend(retrieve_devices(udp_socket));
+                            devices
+                        },
+                        Err(_)=>
+                        {
+                            devices
+                        }
+                    }
+                    
+                },
+                Err(_) =>
+                {
+                    devices
+                }
+            }
+            
+        },
+        Err(_) =>
+        {
+            devices
+        }
+    }
 }
+
 
 fn get_device_from_bytes(buffer:&[u8]) -> Result<Device,data_recieve_error>
 {
