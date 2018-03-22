@@ -31,6 +31,15 @@ enum data_recieve_error{
     empty_buffer
 
 }
+
+#[derive(Debug,PartialEq)]
+enum device_error{
+    could_not_setup_devices,
+    could_not_send_setup_command,
+    could_not_unserialize_device_packet,
+    could_not_recieve_device_packet
+
+}
 #[derive(Debug,PartialEq)]
 enum checksum_error
 {
@@ -51,20 +60,30 @@ fn main()
 {
     println!("Starting Jarvis");
     println!("Checking For Devices");
-    let udp_socket = UdpSocket::bind("127.0.0.1:62345").expect("COULD NOT BIND TO UDP PACKET");
-    set_up_socket(&udp_socket).expect("could not set up socket");
-    let devices = set_up_devices(&udp_socket);
-    
+    let read_udp_socket = UdpSocket::bind("0.0.0.0:61000").expect("COULD NOT BIND TO UDP PACKET");
+    let send_udp_socket = UdpSocket::bind("0.0.0.0:62345").expect("COULD NOT BIND SEND SOCKET");
+    set_up_socket(&read_udp_socket).expect("could not set up read socket");
+    set_up_socket(&send_udp_socket).expect("could not set up send socket");
+    match set_up_devices(&read_udp_socket,&send_udp_socket)
+    {
+        Ok(devices)=>{
+            println!("Set up devices : devices {:?}",devices)
+        },
+        Err(err) =>{
+            println!("Error and stuff {:?}",err);
+        }
+    }
+
     
 }
 
 fn set_up_socket(udp_socket : &UdpSocket) -> Result<(),socket_setup_error>
 {
-    match udp_socket.set_write_timeout(Some(Duration::new(3, 0)))
+    match udp_socket.set_write_timeout(Some(Duration::new(30, 0)))
     {
         Ok(_) =>
         {
-            match udp_socket.set_read_timeout(Some(Duration::new(3, 0)))
+            match udp_socket.set_read_timeout(Some(Duration::new(30, 0)))
             {
                 Ok(_) =>
                 {
@@ -81,28 +100,28 @@ fn set_up_socket(udp_socket : &UdpSocket) -> Result<(),socket_setup_error>
     }
 }
 
-fn set_up_devices(udp_socket : &UdpSocket) -> Vec<Device>
+fn set_up_devices(read_udp_socket : &UdpSocket,send_udp_socket : &UdpSocket) -> Result<Vec<Device>,device_error>
 {
-    match udp_socket.connect("255.255.255.255:62345")
+    match send_udp_socket.connect("255.255.255.255:62344")
     {
         Ok(result) =>
         {
             let current_time = time::now();
             let set_up_command = set_up_command_broadcast();
-            match udp_socket.send(&set_up_command)
+            match send_udp_socket.send(&set_up_command)
             {
                 Ok(_) =>
                 {
-                    retrieve_devices(udp_socket)
+                    retrieve_devices(read_udp_socket)
                 },
                 Err(_)=>
                 {
-                    vec![]
+                    Err(device_error::could_not_setup_devices)
                 }
             }
         },
         Err(_) =>{
-            vec![]
+            Err(device_error::could_not_send_setup_command)
         }
     }
 
@@ -130,45 +149,52 @@ fn get_checksum(bytes : &[u8]) -> u32
 
 
 
-fn retrieve_devices(udp_socket : &UdpSocket) -> Vec<Device>
+fn retrieve_devices(udp_socket : &UdpSocket) -> Result<Vec<Device>,device_error>
 {
     let mut devices : Vec<Device> = vec![];
-    match udp_socket.connect("0.0.0.0:62345")
+
+    let mut buffer = [0;256];
+    //udp_socket.connect("0.0.0.0:56000").expect("Could not bind to 62344");
+    match udp_socket.recv_from(&mut buffer)
     {
-        Ok(result) =>
+        Ok(success) =>
         {
-            let mut buffer = [0,128];
-            match udp_socket.recv(&mut buffer)
+            match get_device_from_bytes(&buffer)
             {
-                Ok(success) =>
+                Ok(device_from_buffer) =>
                 {
-                    match get_device_from_bytes(&buffer)
+                    devices.push(device_from_buffer);
+                    match retrieve_devices(udp_socket)
                     {
-                        Ok(device_from_buffer) =>
+                        Ok(recursive_device) =>
                         {
-                            devices.push(device_from_buffer);
-                            devices.extend(retrieve_devices(udp_socket));
-                            devices
+                            println!("Found devices");
+                            devices.extend(recursive_device);
+                            Ok(devices)
                         },
-                        Err(_)=>
+                        Err(_) =>
                         {
-                            devices
+                            println!("COULD NOT GET MORE DEVICES");
+                            Ok(devices)
                         }
                     }
-                    
                 },
-                Err(_) =>
+                Err(e)=>
                 {
-                    devices
+                    println!("COULD NOT SERIALIZE DEVICE{:?}",e);
+                    Err(device_error::could_not_unserialize_device_packet)
                 }
             }
             
         },
-        Err(_) =>
+        Err(e) =>
         {
-            devices
+            println!("could not recieve this {:?}",e);
+            Err(device_error::could_not_recieve_device_packet)
         }
     }
+    
+
 }
 
 
@@ -235,6 +261,7 @@ fn validate_checksum(buffer: &[u8]) -> Result<(),checksum_error>
 
 fn create_buffer_from_device(buffer:&[u8]) -> Option<Device>
 {
+    println!("print buffer {:?}",buffer);
     if(buffer.len()>2)
     {
         Some(Device
