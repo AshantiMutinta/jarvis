@@ -28,7 +28,8 @@ enum data_recieve_error{
     protocol_error,
     could_not_recieve_data,
     possible_corrupted_data,
-    empty_buffer
+    empty_buffer,
+    mismatch_checksum
 
 }
 
@@ -168,20 +169,18 @@ fn retrieve_devices(udp_socket : &UdpSocket) -> Result<Vec<Device>,device_error>
                     {
                         Ok(recursive_device) =>
                         {
-                            println!("Found devices");
+
                             devices.extend(recursive_device);
                             Ok(devices)
                         },
                         Err(_) =>
                         {
-                            println!("COULD NOT GET MORE DEVICES");
                             Ok(devices)
                         }
                     }
                 },
                 Err(e)=>
                 {
-                    println!("COULD NOT SERIALIZE DEVICE{:?}",e);
                     Err(device_error::could_not_unserialize_device_packet)
                 }
             }
@@ -189,7 +188,6 @@ fn retrieve_devices(udp_socket : &UdpSocket) -> Result<Vec<Device>,device_error>
         },
         Err(e) =>
         {
-            println!("could not recieve this {:?}",e);
             Err(device_error::could_not_recieve_device_packet)
         }
     }
@@ -217,7 +215,7 @@ fn get_device_from_bytes(buffer:&[u8]) -> Result<Device,data_recieve_error>
                         }
 
                     },
-                    Err(_) =>{Err(data_recieve_error::possible_corrupted_data)}
+                    Err(_) =>{Err(data_recieve_error::mismatch_checksum)}
                 }
             }
             else
@@ -235,12 +233,14 @@ fn validate_checksum(buffer: &[u8]) -> Result<(),checksum_error>
 {
     if(buffer.len()>4)
     {
-        let buffer_without_checksum = buffer.split_at(buffer.len()-4);
+        let buffer_without_trailing_zeros = buffer.split_at((buffer[1]+2) as usize).0;
+        let buffer_without_checksum = buffer_without_trailing_zeros.split_at(buffer_without_trailing_zeros.len()-4);
         let calculated_read_buffer_checksum = get_checksum(buffer_without_checksum.0);
         let checksum = ((buffer_without_checksum.1[0] as u32) <<24) |
                     ((buffer_without_checksum.1[1] as u32)  <<16) |
                     ((buffer_without_checksum.1[2] as u32)  <<8) |
                     ((buffer_without_checksum.1[3] as u32) ) ;
+      
         if(checksum==calculated_read_buffer_checksum)
         {
             Ok(())
@@ -261,7 +261,6 @@ fn validate_checksum(buffer: &[u8]) -> Result<(),checksum_error>
 
 fn create_buffer_from_device(buffer:&[u8]) -> Option<Device>
 {
-    println!("print buffer {:?}",buffer);
     if(buffer.len()>2)
     {
         Some(Device
@@ -282,6 +281,7 @@ fn create_buffer_from_device(buffer:&[u8]) -> Option<Device>
 fn test_validate_checksum()
 {
     assert_eq!(validate_checksum(&[165,9,15,1,0,0,0,0x95,0x1c,0x82,0xcb]),Ok(()));
+     assert_eq!(validate_checksum(&[165,9,15,1,0,0,0,0x95,0x1c,0x82,0xcb,0,0,0,0,23]),Ok(()));
     assert_eq!(validate_checksum(&[165,9,19,1,0,0,0,0x95,0x1C,0x82,0xCB]).expect_err("Matching checksum"),checksum_error::mismatch);
 
 }
@@ -292,7 +292,7 @@ fn test_get_device_from_bytes()
     
     assert_eq!(get_device_from_bytes(&[]).expect_err("should expect protocol error"),data_recieve_error::empty_buffer);
     assert_eq!(get_device_from_bytes(&[00,9,15,1,0,0,0,0x95,0x1C,0x82,0xCB]).expect_err("should expect protocol error"),data_recieve_error::protocol_error);
-    assert_eq!(get_device_from_bytes(&[165,9,15,1,0,0,0,0,0,0,0]).expect_err("expected corrupted data"),data_recieve_error::possible_corrupted_data);
+    assert_eq!(get_device_from_bytes(&[165,9,15,1,0,0,0,0,0,0,0]).expect_err("expected corrupted data"),data_recieve_error::mismatch_checksum);
     assert_eq!(get_device_from_bytes(&[165,9,15,1,0,0,0,0x95,0x1C,0x82,0xCB]).expect("expected device").device_id,15);
     
 
