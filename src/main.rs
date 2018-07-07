@@ -1,5 +1,6 @@
 use std::net::UdpSocket;
 use std::time::Duration;
+use std::io::Write;
 extern crate time;
 extern crate crc;
 use crc::{crc32, Hasher32};
@@ -47,6 +48,24 @@ enum checksum_error
     mismatch
 }
 
+#[derive(Debug,PartialEq)]
+enum parent_command
+{
+    status,
+    help,
+    exit,
+    no_parent_command
+}
+
+enum command_execution_error
+{
+    empty_command
+}
+
+trait CommandExecution
+{
+    fn execute(&self) ->Result<(),command_execution_error>;
+}
 
 
 #[derive(Debug)]
@@ -56,6 +75,101 @@ struct Device
     status : Status
 }
 
+fn listen_to_commands()
+{
+    println!("Enter COMMAND");
+    std::io::stdout().flush();
+    let mut command: String = String::new();
+    loop
+    {
+        command = String::new();
+        std::io::stdin().read_line(&mut command);
+        match parse_command(&command)
+        {
+            Ok(exec) =>
+            {
+                exec.execute();
+            },
+            Err(_)=>
+            {
+               println!("invalid command");
+            }
+        }
+        
+    }
+}
+
+struct stub
+{
+
+}
+
+
+impl CommandExecution for stub
+{
+    fn execute(&self)->Result<(),command_execution_error>
+    {
+        println!("Stub");
+        Ok(())
+    }
+}
+
+fn find_parent_command(command : &str) -> parent_command
+{
+     println!("{:?} was entered",command);
+      match &*command.to_uppercase()
+      {
+          "STATUS" =>
+          {
+              parent_command::status
+          },
+          "HELP" =>
+          {
+              parent_command::help
+          },
+          "EXIT" =>
+          {
+              parent_command::exit
+          },
+          _ =>
+          {
+              parent_command::no_parent_command
+          }
+      }
+}
+
+fn evaluate_status_command(tokenized_command : impl Iterator ) ->Result<impl CommandExecution,command_execution_error>
+{
+    Ok(stub{}) 
+}
+
+fn parse_command<'a>(command : &'a String) ->Result<impl CommandExecution + 'a,command_execution_error>
+{
+    let mut tokenized_command = command.split_whitespace();
+    match tokenized_command.next()
+    {
+        Some(first_command) =>
+        {
+            let parent_command = find_parent_command(first_command);
+            match parent_command
+            {
+                parent_command::status =>
+                {
+                     evaluate_status_command(tokenized_command)
+                },
+                _ =>
+                {
+                    unimplemented!("have not implemented default case")
+                }
+            }
+        },
+        None=>
+        {
+            Err(command_execution_error::empty_command)
+        }
+    }
+
+}
 
 fn main() 
 {
@@ -67,16 +181,25 @@ fn main()
     set_up_socket(&send_udp_socket).expect("could not set up send socket");
     match set_up_devices(&read_udp_socket,&send_udp_socket)
     {
-        Ok(devices)=>{
-            println!("Set up devices : devices {:?}",devices)
+        Ok(devices)=>
+        {
+            println!("Set up devices : devices {:?}",devices);
+            listen_to_commands();
+
         },
-        Err(err) =>{
-            println!("Error and stuff {:?}",err);
+        Err(err) =>
+        {
+            println!("JARVIS COULD NOT START: {:?}",err);
         }
-    }
+    };
+
+    listen_to_commands();
+
+ 
 
     
 }
+
 
 fn set_up_socket(udp_socket : &UdpSocket) -> Result<(),socket_setup_error>
 {
@@ -275,13 +398,13 @@ fn create_buffer_from_device(buffer:&[u8]) -> Option<Device>
         None
     }
     
-}
+}   
 
 #[test]
 fn test_validate_checksum()
 {
     assert_eq!(validate_checksum(&[165,9,15,1,0,0,0,0x95,0x1c,0x82,0xcb]),Ok(()));
-     assert_eq!(validate_checksum(&[165,9,15,1,0,0,0,0x95,0x1c,0x82,0xcb,0,0,0,0,23]),Ok(()));
+    assert_eq!(validate_checksum(&[165,9,15,1,0,0,0,0x95,0x1c,0x82,0xcb,0,0,0,0,23]),Ok(()));
     assert_eq!(validate_checksum(&[165,9,19,1,0,0,0,0x95,0x1C,0x82,0xCB]).expect_err("Matching checksum"),checksum_error::mismatch);
 
 }
@@ -298,6 +421,14 @@ fn test_get_device_from_bytes()
 
 }
 
+
+#[test]
+fn test_parent_status_match()
+{
+    assert_eq!(find_parent_command("sTatus"),parent_command::status);
+    assert_eq!(find_parent_command("eXit"),parent_command::exit);
+    assert_eq!(find_parent_command("hELp"),parent_command::help);
+}
 
 
 
