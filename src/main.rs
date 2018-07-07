@@ -99,11 +99,22 @@ fn listen_to_commands()
     }
 }
 
-struct stub
+struct StatusExec<'a>
 {
-
+    read_udp_socket : Option<&'a UdpSocket>,
+    send_udp_socket : Option<&'a UdpSocket>,
+    device_name : &'a String
 }
 
+impl<'a> CommandExecution for StatusExec<'a>
+{
+    fn execute(&self) -> Result<(),command_execution_error>
+    {
+        unimplemented!("Have not implemented Status");
+    }
+}
+
+struct stub{}
 
 impl CommandExecution for stub
 {
@@ -138,9 +149,12 @@ fn find_parent_command(command : &str) -> parent_command
       }
 }
 
-fn evaluate_status_command(tokenized_command : impl Iterator ) ->Result<impl CommandExecution,command_execution_error>
+fn evaluate_status_command(mut tokenized_command : impl Iterator ) ->Result<impl CommandExecution,command_execution_error>
 {
-    Ok(stub{}) 
+    let first_token = tokenized_command.next();
+    let device_type = tokenized_command.next();
+    Ok(stub{})
+    
 }
 
 fn parse_command<'a>(command : &'a String) ->Result<impl CommandExecution + 'a,command_execution_error>
