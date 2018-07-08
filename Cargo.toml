@@ -6,3 +6,4 @@ authors = ["Ashanti Mutinta"]
 [dependencies]
 time = "0.1"
 crc = "^1.0.0"
+colored = "1.6"
