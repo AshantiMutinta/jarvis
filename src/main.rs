@@ -5,6 +5,7 @@ use colored::*;
 use std::io::Write;
 use Jarvis::Communication::Channel;
 use Jarvis::Device::Command;
+use Jarvis::Device::Command::CommandExecution;
 use Jarvis::Device::Device;
 
 enum message_level {
@@ -37,7 +38,7 @@ fn listen_to_commands<'a>(com_channel: &'a Channel::Channel) {
         std::io::stdin().read_line(&mut command);
         match Command::parse_command(&command) {
             Ok(exec) => {
-                //exec.execute();
+                exec.execute(&com_channel);
             }
             Err(_) => {
                 post_message("invalid command", message_level::error);
