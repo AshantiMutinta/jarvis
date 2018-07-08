@@ -8,9 +8,19 @@ pub enum socket_setup_error {
     could_not_set_broadcast,
 }
 
-pub struct Channel<'a> {
-    pub read_udp_socket: &'a UdpSocket,
-    pub write_udp_socket: &'a UdpSocket,
+pub struct Channel {
+    pub read_udp_socket: UdpSocket,
+    pub write_udp_socket: UdpSocket,
+}
+
+impl Channel {
+    pub fn new(read_IP: &str, write_IP: &str) -> Channel {
+        Channel {
+            read_udp_socket: UdpSocket::bind("0.0.0.0:61000")
+                .expect("COULD NOT BIND TO UDP PACKET"),
+            write_udp_socket: UdpSocket::bind("0.0.0.0:62345").expect("COULD NOT BIND SEND SOCKET"),
+        }
+    }
 }
 
 enum com_error {
