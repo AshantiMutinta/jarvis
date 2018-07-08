@@ -1,2 +1,2 @@
-pub mod Device;
 pub mod Command;
+pub mod Device;
