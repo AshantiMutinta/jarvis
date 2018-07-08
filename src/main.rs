@@ -50,8 +50,6 @@ fn main() {
     post_message("Starting JARVIS", message_level::success);
     println!("Checking For Devices");
     let mut com_channel = Channel::Channel::new("0.0.0.0:61000", "0.0.0.0:62345");
-    Channel::set_up_socket(&com_channel.read_udp_socket).expect("could not set up read socket");
-    Channel::set_up_socket(&com_channel.write_udp_socket).expect("could not set up send socket");
     match Device::set_up_devices(&com_channel) {
         Ok(devices) => {
             println!("Set up devices : devices {:?}", devices);
