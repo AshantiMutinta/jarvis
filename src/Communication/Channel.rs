@@ -20,7 +20,7 @@ impl Channel {
                 .expect("COULD NOT BIND TO UDP PACKET"),
             write_udp_socket: UdpSocket::bind("0.0.0.0:62345").expect("COULD NOT BIND SEND SOCKET"),
         };
-        
+
         set_up_socket(&com_channel.read_udp_socket).expect("could not set up read socket");
         set_up_socket(&com_channel.write_udp_socket).expect("could not set up send socket");
         com_channel
