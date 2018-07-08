@@ -72,3 +72,10 @@ fn find_parent_command(command: &str) -> parent_command {
         _ => parent_command::no_parent_command,
     }
 }
+
+#[test]
+fn test_parent_status_match() {
+    assert_eq!(find_parent_command("sTatus"), parent_command::status);
+    assert_eq!(find_parent_command("eXit"), parent_command::exit);
+    assert_eq!(find_parent_command("hELp"), parent_command::help);
+}

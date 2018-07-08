@@ -23,6 +23,7 @@ enum checksum_error {
     mismatch,
 }
 
+#[derive(Debug, PartialEq)]
 enum data_recieve_error {
     protocol_error,
     could_not_recieve_data,

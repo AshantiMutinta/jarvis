@@ -70,13 +70,4 @@ fn main() {
             post_message("JARVIS COULD NOT START", message_level::error);
         }
     };
-
-    listen_to_commands(&com_channel);
-}
-
-#[test]
-fn test_parent_status_match() {
-    assert_eq!(find_parent_command("sTatus"), parent_command::status);
-    assert_eq!(find_parent_command("eXit"), parent_command::exit);
-    assert_eq!(find_parent_command("hELp"), parent_command::help);
 }
