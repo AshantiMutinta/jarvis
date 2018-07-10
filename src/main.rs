@@ -1,8 +1,8 @@
 extern crate Jarvis;
-extern crate colored;
+extern crate termcolor;
 
-use colored::*;
 use std::io::Write;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use Jarvis::Communication::Channel;
 use Jarvis::Device::Command;
 use Jarvis::Device::Command::CommandExecution;
@@ -16,18 +16,15 @@ enum message_level {
 }
 
 fn post_message(message: &str, level: message_level) {
-    match level {
-        message_level::warning => {
-            println!("{}", message.yellow());
-        }
-        message_level::error => {
-            println!("{}", message.red());
-        }
-        message_level::success => println!("{}", message.green()),
-        _ => {
-            println!("{}", message);
-        }
-    }
+    let mut stdout = StandardStream::stdout(ColorChoice::Always);
+    let term_color = match level {
+        message_level::warning => Color::Yellow,
+        message_level::error => Color::Red,
+        message_level::success => Color::Green,
+        _ => Color::White,
+    };
+    stdout.set_color(ColorSpec::new().set_fg(Some(term_color)));
+    writeln!(&mut stdout, "{}", message);
 }
 fn listen_to_commands<'a>(com_channel: &'a Channel::Channel) {
     post_message("Enter COMMAND", message_level::info);
