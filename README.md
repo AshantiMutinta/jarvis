@@ -6,7 +6,7 @@ Working on Networking Applications By Creating Some Home Device System
 
 Jarvis is a makeshift networking system that defines a protocol for different devices to talk to each other on a LAN. 
 Jarvis defines a standardized protocol over UDP works over a server-client stystem.
-====================================================================================
+
 
 # How to run
 
