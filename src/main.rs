@@ -5,7 +5,7 @@ use std::io::Write;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use Jarvis::Communication::Channel;
 use Jarvis::Device::Command;
-use Jarvis::Device::Command::CommandExecution;
+use Jarvis::Device::Command::{CommandExecution, CommandListen};
 use Jarvis::Device::Device;
 
 enum message_level {
@@ -29,19 +29,8 @@ fn post_message(message: &str, level: message_level) {
 fn listen_to_commands<'a>(com_channel: &'a Channel::Channel) {
     post_message("Enter COMMAND", message_level::info);
     std::io::stdout().flush();
-    let mut command: String = String::new();
-    loop {
-        command = String::new();
-        std::io::stdin().read_line(&mut command);
-        match Command::parse_command(&command) {
-            Ok(exec) => {
-                exec.execute(&com_channel);
-            }
-            Err(_) => {
-                post_message("invalid command", message_level::error);
-            }
-        }
-    }
+    let text_io = Command::TextInput {};
+    text_io.listen(com_channel);
 }
 
 fn main() {

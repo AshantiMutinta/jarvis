@@ -74,11 +74,11 @@ fn find_parent_command(command: &str) -> parent_command {
     }
 }
 
-trait CommandListen<'a> {
+pub trait CommandListen<'a> {
     fn listen(&self, com_channel: &'a Channel::Channel);
 }
 
-struct TextInput {}
+pub struct TextInput {}
 struct VoiceInput {}
 
 impl<'a> CommandListen<'a> for TextInput {
