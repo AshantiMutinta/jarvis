@@ -17,14 +17,14 @@ enum message_level {
 
 fn post_message(message: &str, level: message_level) {
     let mut stdout = StandardStream::stdout(ColorChoice::Always);
-    let term_color = match level {
-        message_level::warning => Color::Yellow,
-        message_level::error => Color::Red,
-        message_level::success => Color::Green,
-        _ => Color::White,
+    let log_message = match level {
+        message_level::warning => ("Warning", Color::Yellow),
+        message_level::error => ("Error", Color::Red),
+        message_level::success => ("OK", Color::Green),
+        _ => ("Info", Color::White),
     };
-    stdout.set_color(ColorSpec::new().set_fg(Some(term_color)));
-    writeln!(&mut stdout, "{}", message);
+    stdout.set_color(ColorSpec::new().set_fg(Some(log_message.1)));
+    writeln!(&mut stdout, "{}", [log_message.0, ":", message].join(""));
 }
 fn listen_to_commands<'a>(com_channel: &'a Channel::Channel) {
     post_message("Enter COMMAND", message_level::info);
@@ -45,8 +45,9 @@ fn listen_to_commands<'a>(com_channel: &'a Channel::Channel) {
 }
 
 fn main() {
-    post_message("Starting JARVIS", message_level::success);
-    println!("Checking For Devices");
+    post_message("Starting JARVIS", message_level::info);
+    post_message("Checking for devices", message_level::info);
+    println!("=====================");
     let mut com_channel = Channel::Channel::new("0.0.0.0:61000", "0.0.0.0:62345");
     match Device::set_up_devices(&com_channel) {
         Ok(devices) => {
@@ -57,4 +58,5 @@ fn main() {
             post_message("JARVIS COULD NOT START", message_level::error);
         }
     };
+    println!("=====================");
 }

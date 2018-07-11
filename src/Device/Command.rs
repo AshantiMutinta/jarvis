@@ -1,3 +1,4 @@
+use std::io;
 use Communication::Channel;
 
 #[derive(Debug, PartialEq)]
@@ -70,6 +71,31 @@ fn find_parent_command(command: &str) -> parent_command {
         "HELP" => parent_command::help,
         "EXIT" => parent_command::exit,
         _ => parent_command::no_parent_command,
+    }
+}
+
+trait CommandListen<'a> {
+    fn listen(&self, com_channel: &'a Channel::Channel);
+}
+
+struct TextInput {}
+struct VoiceInput {}
+
+impl<'a> CommandListen<'a> for TextInput {
+    fn listen(&self, com_channel: &'a Channel::Channel) {
+        let mut command: String = String::new();
+        loop {
+            command = String::new();
+            io::stdin().read_line(&mut command);
+            match parse_command(&command) {
+                Ok(exec) => {
+                    exec.execute(&com_channel);
+                }
+                Err(_) => {
+                    ();
+                }
+            }
+        }
     }
 }
 
