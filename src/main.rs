@@ -2,13 +2,13 @@ extern crate Jarvis;
 extern crate termcolor;
 
 use std::io::Write;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use Jarvis::Communication::Channel;
 use Jarvis::Device::Command;
 use Jarvis::Device::Command::{CommandExecution, CommandListen};
 use Jarvis::Device::Device;
-use std::sync::{Arc, Mutex};
 
 enum message_level {
     info,
@@ -28,24 +28,19 @@ fn post_message(message: &str, level: message_level) {
     stdout.set_color(ColorSpec::new().set_fg(Some(log_message.1)));
     writeln!(&mut stdout, "{}", [log_message.0, ":", message].join(""));
 }
-fn listen_to_commands(com_channel:  Channel::Channel) 
-{
+fn listen_to_commands(com_channel: Channel::Channel) {
     post_message("ENTER OR VOICE COMMAND", message_level::info);
     std::io::stdout().flush();
     let thread_data = Arc::new(Mutex::new(com_channel));
-    let result = thread::spawn(move || ->()
-    {
-        loop
-        {
-            let thread_com_channel= &*thread_data.lock().unwrap();
+    let result = thread::spawn(move || -> () {
+        loop {
+            let thread_com_channel = &*thread_data.lock().unwrap();
             let mut text_io = Command::TextInput::new("");
             text_io.listen(&*thread_com_channel);
         }
-
     });
 
     result.join();
-
 }
 
 fn main() {
