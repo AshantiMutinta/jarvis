@@ -7,3 +7,4 @@ authors = ["Ashanti Mutinta"]
 time = "0.1"
 crc = "^1.0.0"
 termcolor = "0.3"
+portaudio = "0.7.0"

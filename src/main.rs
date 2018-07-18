@@ -36,7 +36,7 @@ fn listen_to_commands(com_channel: Channel::Channel) {
         loop {
             let thread_com_channel = &*thread_data.lock().unwrap();
             let mut text_io = Command::TextInput::new("");
-            text_io.listen(&*thread_com_channel);
+            let exec = text_io.listen(&*thread_com_channel);
         }
     });
 
