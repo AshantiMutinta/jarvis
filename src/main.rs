@@ -37,6 +37,17 @@ fn listen_to_commands(com_channel: Channel::Channel) {
             let thread_com_channel = &*thread_data.lock().unwrap();
             let mut text_io = Command::TextInput::new("");
             let exec = text_io.listen(&*thread_com_channel);
+            match exec
+            {
+                Ok(command) =>
+                {
+                    command.execute(&*thread_com_channel);
+                }
+                Err(_)=>
+                {
+                    post_message("COULD NOT EXECUTE COMMAND",message_level::error);
+                }
+            }
         }
     });
 
