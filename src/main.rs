@@ -41,14 +41,14 @@ fn listen_to_commands(com_channel: Channel::Channel) {
  
     //use tuple of (io,execution_order) to determine execution of application
     let io_execution =vec![(Command::TextInput::new(""),execution_order::sync)];
-
+    let thread_data = Arc::new(com_channel);
     let results = io_execution.into_iter().map(move |execution|
     {
         match execution.1
         {
             execution_order::async =>
             {
-                   let thread_data = Box::new(&com_channel);
+                   let thread_data = thread_data.clone();
                     Some(thread::spawn(move || -> () {
                     loop {
                         //let thread_com_channel = thread_data.lock().unwrap();
