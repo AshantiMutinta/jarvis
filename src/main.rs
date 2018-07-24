@@ -1,5 +1,6 @@
 extern crate Jarvis;
 extern crate termcolor;
+extern crate num_cpus;
 
 use std::io::Write;
 use std::sync::{Arc, Mutex};
@@ -17,6 +18,12 @@ enum message_level {
     success,
 }
 
+enum execution_order
+{
+    sync,
+    async
+}
+
 fn post_message(message: &str, level: message_level) {
     let mut stdout = StandardStream::stdout(ColorChoice::Always);
     let log_message = match level {
@@ -31,27 +38,48 @@ fn post_message(message: &str, level: message_level) {
 fn listen_to_commands(com_channel: Channel::Channel) {
     post_message("ENTER OR VOICE COMMAND", message_level::info);
     std::io::stdout().flush();
-    let thread_data = Arc::new(Mutex::new(com_channel));
-    let result = thread::spawn(move || -> () {
-        loop {
-            let thread_com_channel = &*thread_data.lock().unwrap();
-            let mut text_io = Command::TextInput::new("");
-            let exec = text_io.listen(&*thread_com_channel);
-            match exec
+ 
+    //use tuple of (io,execution_order) to determine execution of application
+    let io_execution =vec![(Command::TextInput::new(""),execution_order::sync)];
+
+    let results = io_execution.into_iter().map(move |execution|
+    {
+        match execution.1
+        {
+            execution_order::async =>
             {
-                Ok(command) =>
-                {
-                    command.execute(&*thread_com_channel);
-                }
-                Err(_)=>
-                {
-                    post_message("COULD NOT EXECUTE COMMAND",message_level::error);
-                }
+                   let thread_data = Box::new(&com_channel);
+                    Some(thread::spawn(move || -> () {
+                    loop {
+                        //let thread_com_channel = thread_data.lock().unwrap();
+                        let mut text_io = Command::TextInput::new("");
+                        let exec = text_io.listen(&thread_data);
+                        match exec
+                        {
+                            Ok(command) =>
+                            {
+                                command.execute(&thread_data);
+                            }
+                            Err(_)=>
+                            {
+                                post_message("COULD NOT EXECUTE COMMAND",message_level::error);
+                            }
+                        }
+                    }
+                    }))
+            },
+            _ =>
+            {
+                None
             }
         }
-    });
+    }).collect::<Vec<_>>();
 
-    result.join();
+    results.into_iter().map(|f|{match f{ Some(res)=>{res.join();},_=>()}}).collect::<Vec<_>>();
+
+    
+
+
 }
 
 fn main() {
