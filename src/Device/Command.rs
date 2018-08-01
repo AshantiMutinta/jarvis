@@ -80,12 +80,7 @@ fn find_parent_command(command: &str) -> parent_command {
         _ => parent_command::no_parent_command,
     }
 }
-struct CommandExecutionWrapper<T>
-where
-    T: CommandExecution,
-{
-    exec: &T,
-}
+
 pub trait CommandListen {
     fn listen(
         &mut self,
