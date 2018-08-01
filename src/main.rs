@@ -3,7 +3,9 @@ extern crate num_cpus;
 extern crate termcolor;
 
 use std::io::Write;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    mpsc, mpsc::{Receiver, Sender}, Arc, Mutex,
+};
 use std::thread;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use Jarvis::Communication::Channel;
@@ -39,34 +41,49 @@ fn listen_to_commands(com_channel: Channel::Channel) {
     std::io::stdout().flush();
 
     //use tuple of (io,execution_order) to determine execution of application
+    let channel = mpsc::channel();
     let io_execution = vec![(Command::TextInput::new(""), execution_order::sync)];
     let thread_data = Arc::new(com_channel);
+    let th = thread_data.clone();
+    let send_clone_channel = channel.0.clone();
     let results = io_execution
         .into_iter()
-        .map(move |execution| {
-            match execution.1 {
-                execution_order::async => {
-                    let thread_data = thread_data.clone();
-                    Some(thread::spawn(move || -> () {
-                        loop {
-                            //let thread_com_channel = thread_data.lock().unwrap();
-                            let mut text_io = Command::TextInput::new("");
-                            let exec = text_io.listen(&thread_data);
-                            match exec {
-                                Ok(command) => {
-                                    command.execute(&thread_data);
-                                }
-                                Err(_) => {
-                                    post_message("COULD NOT EXECUTE COMMAND", message_level::error);
-                                }
+        .map(move |execution| match execution.1 {
+            execution_order::async => Some(thread::spawn(move || -> () {
+                loop {
+                    let mut text_io = Command::TextInput::new("");
+                    let exec = text_io.listen(&th);
+                    match exec {
+                        Ok(command) => match send_clone_channel.send(command) {
+                            Ok(com) => {}
+                            Err(_) => {
+                                post_message("CHANNEL COULD NOT BE SEND", message_level::error);
                             }
+                        },
+                        Err(_) => {
+                            post_message("COULD NOT EXECUTE COMMAND", message_level::error);
                         }
-                    }))
+                    }
                 }
-                _ => None,
-            }
+            })),
+            _ => None,
         })
         .collect::<Vec<_>>();
+
+    let tcount = thread_data.clone();
+    let loop_result = thread::spawn(move || -> () {
+        let thr = tcount.clone();
+        loop {
+            match channel.1.recv() {
+                Ok(exec) => {
+                    exec.execute(&thr);
+                }
+                Err(_) => {
+                    post_message("COULD NOT RECIEVE COMMAND", message_level::error);
+                }
+            }
+        }
+    });
 
     results
         .into_iter()
@@ -77,6 +94,7 @@ fn listen_to_commands(com_channel: Channel::Channel) {
             _ => (),
         })
         .collect::<Vec<_>>();
+    loop_result.join();
 }
 
 fn main() {

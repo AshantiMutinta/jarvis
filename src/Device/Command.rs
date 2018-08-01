@@ -17,7 +17,7 @@ pub enum command_execution_error {
     invalid_command,
 }
 
-pub trait CommandExecution<'a> {
+pub trait CommandExecution<'a>: Send + Sync {
     fn execute(&self, &'a Channel::Channel) -> Result<(), command_execution_error>;
 }
 
