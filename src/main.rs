@@ -48,7 +48,11 @@ fn listen_to_commands(com_channel: Channel::Channel) {
     let send_clone_channel = channel.0.clone();
     let results = io_execution
         .into_iter()
-        .map(move |execution| match execution.1 {
+        .map(move |execution| {
+            let th = th.clone();
+            let send_clone_channel = send_clone_channel.clone();
+
+            match execution.1 {
             execution_order::async => Some(thread::spawn(move || -> () {
                 loop {
                     let mut text_io = Command::TextInput::new("");
@@ -67,7 +71,7 @@ fn listen_to_commands(com_channel: Channel::Channel) {
                 }
             })),
             _ => None,
-        })
+        }})
         .collect::<Vec<_>>();
 
     let tcount = thread_data.clone();
