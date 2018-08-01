@@ -21,11 +21,11 @@ pub trait CommandExecution<'a>: Send + Sync {
     fn execute(&self, &'a Channel::Channel) -> Result<(), command_execution_error>;
 }
 
-struct StatusExec<'a> {
-    device_name: &'a str,
+struct StatusExec {
+    device_name: String,
 }
 
-impl<'a> CommandExecution<'a> for StatusExec<'a> {
+impl<'a> CommandExecution<'a> for StatusExec {
     fn execute(&self, com_channel: &'a Channel::Channel) -> Result<(), command_execution_error> {
         unimplemented!("Have not implemented Status");
     }
@@ -47,7 +47,7 @@ fn evaluate_status_command<'a>(
     match tokenized_command.next() {
         Some(device) => {
             let comm = StatusExec {
-                device_name: device,
+                device_name: device.to_string(),
             };
 
             Ok(Box::new(comm))
