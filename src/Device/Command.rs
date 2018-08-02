@@ -17,37 +17,37 @@ pub enum command_execution_error {
     invalid_command,
 }
 
-pub trait CommandExecution<'a>: Send + Sync {
-    fn execute(&self, &'a Channel::Channel) -> Result<(), command_execution_error>;
+pub trait CommandExecution: Send + Sync {
+    fn execute(&self, &Channel::Channel) -> Result<(), command_execution_error>;
 }
 
-struct StatusExec<'a> {
-    device_name: &'a str,
+struct StatusExec {
+    device_name: String,
 }
 
-impl<'a> CommandExecution<'a> for StatusExec<'a> {
-    fn execute(&self, com_channel: &'a Channel::Channel) -> Result<(), command_execution_error> {
+impl CommandExecution for StatusExec {
+    fn execute(&self, com_channel: &Channel::Channel) -> Result<(), command_execution_error> {
         unimplemented!("Have not implemented Status");
     }
 }
 
 struct stub {}
 
-impl<'a> CommandExecution<'a> for stub {
-    fn execute(&self, com_channel: &'a Channel::Channel) -> Result<(), command_execution_error> {
+impl CommandExecution for stub {
+    fn execute(&self, com_channel: &Channel::Channel) -> Result<(), command_execution_error> {
         println!("Stub");
         Ok(())
     }
 }
 
-fn evaluate_status_command<'a>(
-    mut tokenized_command: SplitWhitespace<'a>,
-) -> Result<Box<dyn CommandExecution<'a> + 'a>, command_execution_error> {
+fn evaluate_status_command(
+    mut tokenized_command: SplitWhitespace,
+) -> Result<Box<dyn CommandExecution>, command_execution_error> {
     let first_token = tokenized_command.next();
     match tokenized_command.next() {
         Some(device) => {
             let comm = StatusExec {
-                device_name: device,
+                device_name: device.to_string(),
             };
 
             Ok(Box::new(comm))
@@ -56,9 +56,9 @@ fn evaluate_status_command<'a>(
     }
 }
 
-pub fn parse_command<'a>(
-    command: &'a String,
-) -> Result<Box<CommandExecution<'a> + 'a>, command_execution_error> {
+pub fn parse_command(
+    command: &String,
+) -> Result<Box<CommandExecution>, command_execution_error> {
     let mut tokenized_command = command.split_whitespace();
     match tokenized_command.next() {
         Some(first_command) => {
@@ -80,17 +80,12 @@ fn find_parent_command(command: &str) -> parent_command {
         _ => parent_command::no_parent_command,
     }
 }
-struct CommandExecutionWrapper<'a, T: 'a>
-where
-    T: CommandExecution<'a>,
-{
-    exec: &'a T,
-}
-pub trait CommandListen<'a> {
+
+pub trait CommandListen {
     fn listen(
-        &'a mut self,
-        com_channel: &'a Channel::Channel,
-    ) -> Result<Box<dyn CommandExecution<'a> + 'a>, command_execution_error>;
+        &mut self,
+        com_channel: &Channel::Channel,
+    ) -> Result<Box<dyn CommandExecution>, command_execution_error>;
 }
 
 pub struct TextInput {
@@ -105,11 +100,11 @@ impl TextInput {
 }
 struct VoiceInput {}
 
-impl<'a> CommandListen<'a> for TextInput {
+impl CommandListen for TextInput {
     fn listen(
-        &'a mut self,
-        com_channel: &'a Channel::Channel,
-    ) -> Result<Box<dyn CommandExecution<'a> + 'a>, command_execution_error> {
+        &mut self,
+        com_channel: &Channel::Channel,
+    ) -> Result<Box<dyn CommandExecution>, command_execution_error> {
         self.command = String::new();
         io::stdin().read_line(&mut self.command);
         parse_command(&self.command)
