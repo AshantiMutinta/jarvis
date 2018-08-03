@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate lazy_static;
 extern crate Jarvis;
 extern crate num_cpus;
 extern crate termcolor;
@@ -9,9 +11,9 @@ use std::sync::{
 use std::thread;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use Jarvis::Communication::Channel;
-use Jarvis::Device::Command;
 use Jarvis::Device::Command::{CommandExecution, CommandListen};
 use Jarvis::Device::Device;
+use Jarvis::Device::{Command, TextCommand,NetworkCommand};
 
 enum message_level {
     info,
@@ -39,39 +41,38 @@ fn post_message(message: &str, level: message_level) {
 fn listen_to_commands(com_channel: Channel::Channel) {
     post_message("ENTER OR VOICE COMMAND", message_level::info);
     std::io::stdout().flush();
+    let io_execution : Vec<(Box<CommandListen>,execution_order)> = vec![(Box::new(TextCommand::TextInput::new("")), execution_order::async),(Box::new(NetworkCommand::NetworkInput::new()), execution_order::async)];
 
     //use tuple of (io,execution_order) to determine execution of application
     let channel = mpsc::channel();
-    let io_execution = vec![(Command::TextInput::new(""), execution_order::sync)];
     let thread_data = Arc::new(com_channel);
     let th = thread_data.clone();
     let send_clone_channel = channel.0.clone();
-    let results = io_execution
-        .into_iter()
+    let results = COMMAND_LISTENERS
+        .iter()
         .map(move |execution| {
             let th = th.clone();
             let send_clone_channel = send_clone_channel.clone();
-
             match execution.1 {
-            execution_order::async => Some(thread::spawn(move || -> () {
-                loop {
-                    let mut text_io = Command::TextInput::new("");
-                    let exec = text_io.listen(&th);
-                    match exec {
-                        Ok(command) => match send_clone_channel.send(command) {
-                            Ok(com) => {}
+                execution_order::async => Some(thread::spawn(move || -> () {
+                    loop {
+                        let exec = execution.0.listen(&th);
+                        match exec {
+                            Ok(command) => match send_clone_channel.send(command) {
+                                Ok(com) => {}
+                                Err(_) => {
+                                    post_message("CHANNEL COULD NOT BE SEND", message_level::error);
+                                }
+                            },
                             Err(_) => {
-                                post_message("CHANNEL COULD NOT BE SEND", message_level::error);
+                                post_message("COULD NOT EXECUTE COMMAND", message_level::error);
                             }
-                        },
-                        Err(_) => {
-                            post_message("COULD NOT EXECUTE COMMAND", message_level::error);
                         }
                     }
-                }
-            })),
-            _ => None,
-        }})
+                })),
+                _ => None,
+            }
+        })
         .collect::<Vec<_>>();
 
     let tcount = thread_data.clone();
@@ -79,7 +80,9 @@ fn listen_to_commands(com_channel: Channel::Channel) {
         let thr = tcount.clone();
         loop {
             match channel.1.recv() {
-                Ok(exec) => {
+                Ok(exec) => 
+                {
+                    post_message("EXECUTING COMMAND", message_level::info);
                     exec.execute(&thr);
                 }
                 Err(_) => {
@@ -109,12 +112,20 @@ fn main() {
     match Device::set_up_devices(&com_channel) {
         Ok(devices) => {
             println!("Set up devices : devices {:?}", devices);
-            listen_to_commands(com_channel);
         }
         Err(err) => {
-            post_message("JARVIS COULD NOT START", message_level::error);
-            listen_to_commands(com_channel);
+            post_message("JARVIS COULD NOT SET UP DEVICES", message_level::error);
         }
     };
+
+    listen_to_commands(com_channel);
     println!("=====================");
+}
+
+
+lazy_static! {
+    static ref COMMAND_LISTENERS: Vec<(Box<CommandListen>,execution_order)> = {
+        vec![(Box::new(TextCommand::TextInput::new("")), execution_order::async),(Box::new(NetworkCommand::NetworkInput::new()), execution_order::async)]
+
+    };
 }

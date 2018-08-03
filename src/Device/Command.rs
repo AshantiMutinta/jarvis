@@ -56,9 +56,7 @@ fn evaluate_status_command(
     }
 }
 
-pub fn parse_command(
-    command: &String,
-) -> Result<Box<CommandExecution>, command_execution_error> {
+pub fn parse_command(command: &String) -> Result<Box<CommandExecution>, command_execution_error> {
     let mut tokenized_command = command.split_whitespace();
     match tokenized_command.next() {
         Some(first_command) => {
@@ -81,35 +79,14 @@ fn find_parent_command(command: &str) -> parent_command {
     }
 }
 
-pub trait CommandListen {
+pub trait CommandListen : Send + Sync {
     fn listen(
-        &mut self,
+        &self,
         com_channel: &Channel::Channel,
     ) -> Result<Box<dyn CommandExecution>, command_execution_error>;
 }
 
-pub struct TextInput {
-    command: String,
-}
-impl TextInput {
-    pub fn new(com: &str) -> TextInput {
-        TextInput {
-            command: String::from(com),
-        }
-    }
-}
 struct VoiceInput {}
-
-impl CommandListen for TextInput {
-    fn listen(
-        &mut self,
-        com_channel: &Channel::Channel,
-    ) -> Result<Box<dyn CommandExecution>, command_execution_error> {
-        self.command = String::new();
-        io::stdin().read_line(&mut self.command);
-        parse_command(&self.command)
-    }
-}
 
 #[test]
 fn test_parent_status_match() {
