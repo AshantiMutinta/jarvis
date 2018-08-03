@@ -79,7 +79,7 @@ fn find_parent_command(command: &str) -> parent_command {
     }
 }
 
-pub trait CommandListen : Send + Sync {
+pub trait CommandListen: Send + Sync {
     fn listen(
         &self,
         com_channel: &Channel::Channel,

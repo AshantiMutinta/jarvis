@@ -3,15 +3,11 @@ use Communication::Channel;
 use Device::Command::{command_execution_error, parse_command, CommandExecution, CommandListen};
 
 #[derive(Clone)]
-pub struct TextInput {
-
-}
+pub struct TextInput {}
 
 impl TextInput {
     pub fn new(com: &str) -> TextInput {
-        TextInput {
-           
-        }
+        TextInput {}
     }
 }
 

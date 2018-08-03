@@ -13,7 +13,7 @@ use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use Jarvis::Communication::Channel;
 use Jarvis::Device::Command::{CommandExecution, CommandListen};
 use Jarvis::Device::Device;
-use Jarvis::Device::{Command, TextCommand,NetworkCommand};
+use Jarvis::Device::{Command, NetworkCommand, TextCommand};
 
 enum message_level {
     info,
@@ -41,7 +41,16 @@ fn post_message(message: &str, level: message_level) {
 fn listen_to_commands(com_channel: Channel::Channel) {
     post_message("ENTER OR VOICE COMMAND", message_level::info);
     std::io::stdout().flush();
-    let io_execution : Vec<(Box<CommandListen>,execution_order)> = vec![(Box::new(TextCommand::TextInput::new("")), execution_order::async),(Box::new(NetworkCommand::NetworkInput::new()), execution_order::async)];
+    let io_execution: Vec<(Box<CommandListen>, execution_order)> = vec![
+        (
+            Box::new(TextCommand::TextInput::new("")),
+            execution_order::async,
+        ),
+        (
+            Box::new(NetworkCommand::NetworkInput::new()),
+            execution_order::async,
+        ),
+    ];
 
     //use tuple of (io,execution_order) to determine execution of application
     let channel = mpsc::channel();
@@ -80,8 +89,7 @@ fn listen_to_commands(com_channel: Channel::Channel) {
         let thr = tcount.clone();
         loop {
             match channel.1.recv() {
-                Ok(exec) => 
-                {
+                Ok(exec) => {
                     post_message("EXECUTING COMMAND", message_level::info);
                     exec.execute(&thr);
                 }
@@ -122,10 +130,17 @@ fn main() {
     println!("=====================");
 }
 
-
 lazy_static! {
-    static ref COMMAND_LISTENERS: Vec<(Box<CommandListen>,execution_order)> = {
-        vec![(Box::new(TextCommand::TextInput::new("")), execution_order::async),(Box::new(NetworkCommand::NetworkInput::new()), execution_order::async)]
-
+    static ref COMMAND_LISTENERS: Vec<(Box<CommandListen>, execution_order)> = {
+        vec![
+            (
+                Box::new(TextCommand::TextInput::new("")),
+                execution_order::async,
+            ),
+            (
+                Box::new(NetworkCommand::NetworkInput::new()),
+                execution_order::async,
+            ),
+        ]
     };
 }
