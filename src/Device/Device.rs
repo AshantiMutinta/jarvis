@@ -3,6 +3,7 @@ extern crate time;
 
 use self::crc::{crc32, Hasher32};
 use Communication::Channel::Channel;
+use std::io::Read;
 
 #[derive(Debug)]
 enum Status {
@@ -38,7 +39,7 @@ pub struct Device {
     status: Status,
 }
 
-pub fn set_up_devices<'a>(com_channel: &'a Channel) -> Result<Vec<Device>, device_error> {
+pub fn set_up_devices<'a>(com_channel: &'a mut Channel) -> Result<Vec<Device>, device_error> {
     match com_channel
         .write_udp_socket
         .connect("255.255.255.255:62344")
@@ -55,14 +56,15 @@ pub fn set_up_devices<'a>(com_channel: &'a Channel) -> Result<Vec<Device>, devic
     }
 }
 
-fn retrieve_devices<'a>(com_channel: &'a Channel) -> Result<Vec<Device>, device_error> {
+fn retrieve_devices<'a>(com_channel: &'a mut Channel) -> Result<Vec<Device>, device_error> {
     let mut devices: Vec<Device> = vec![];
 
     let mut buffer = [0; 256];
     //udp_socket.connect("0.0.0.0:56000").expect("Could not bind to 62344");
-    match com_channel.read_udp_socket.recv_from(&mut buffer) {
-        Ok(success) => match get_device_from_bytes(&buffer) {
-            Ok(device_from_buffer) => {
+    match com_channel.read(&mut buffer) {
+        Ok(success) => match create_buffer_from_device(&buffer) 
+        {
+            Some(device_from_buffer) => {
                 devices.push(device_from_buffer);
                 match retrieve_devices(com_channel) {
                     Ok(recursive_device) => {
@@ -72,30 +74,13 @@ fn retrieve_devices<'a>(com_channel: &'a Channel) -> Result<Vec<Device>, device_
                     Err(_) => Ok(devices),
                 }
             }
-            Err(e) => Err(device_error::could_not_unserialize_device_packet),
+            None => Err(device_error::could_not_unserialize_device_packet),
         },
         Err(e) => Err(device_error::could_not_recieve_device_packet),
     }
 }
 
-fn get_device_from_bytes(buffer: &[u8]) -> Result<Device, data_recieve_error> {
-    match buffer.first() {
-        Some(first) => {
-            if (*first == 165u8) {
-                match validate_checksum(buffer) {
-                    Ok(validated_buffer) => match create_buffer_from_device(buffer) {
-                        Some(result) => Ok(result),
-                        None => Err(data_recieve_error::possible_corrupted_data),
-                    },
-                    Err(_) => Err(data_recieve_error::mismatch_checksum),
-                }
-            } else {
-                Err(data_recieve_error::protocol_error)
-            }
-        }
-        None => Err(data_recieve_error::empty_buffer),
-    }
-}
+
 
 fn set_up_command_broadcast() -> [u8; 11] {
     let current_time = time::now();
@@ -180,21 +165,7 @@ fn test_validate_checksum() {
 #[test]
 fn test_get_device_from_bytes() {
     assert_eq!(
-        get_device_from_bytes(&[]).expect_err("should expect protocol error"),
-        data_recieve_error::empty_buffer
-    );
-    assert_eq!(
-        get_device_from_bytes(&[00, 9, 15, 1, 0, 0, 0, 0x95, 0x1C, 0x82, 0xCB])
-            .expect_err("should expect protocol error"),
-        data_recieve_error::protocol_error
-    );
-    assert_eq!(
-        get_device_from_bytes(&[165, 9, 15, 1, 0, 0, 0, 0, 0, 0, 0])
-            .expect_err("expected corrupted data"),
-        data_recieve_error::mismatch_checksum
-    );
-    assert_eq!(
-        get_device_from_bytes(&[165, 9, 15, 1, 0, 0, 0, 0x95, 0x1C, 0x82, 0xCB])
+        create_buffer_from_device(&[165, 9, 15, 1, 0, 0, 0, 0x95, 0x1C, 0x82, 0xCB])
             .expect("expected device")
             .device_id,
         15
