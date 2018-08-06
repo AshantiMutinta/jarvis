@@ -15,7 +15,7 @@ impl NetworkInput {
 impl CommandListen for NetworkInput {
     fn listen(
         &self,
-        com_channel: &Channel::Channel,
+        com_channel: &Channel::TransportLayerChannel,
     ) -> Result<Box<dyn CommandExecution>, command_execution_error> {
         let mut buffer = [0; 256];
         match com_channel.read_udp_socket.recv_from(&mut buffer) {

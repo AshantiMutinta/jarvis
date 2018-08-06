@@ -14,7 +14,7 @@ impl TextInput {
 impl CommandListen for TextInput {
     fn listen(
         &self,
-        com_channel: &Channel::Channel,
+        com_channel: &Channel::TransportLayerChannel,
     ) -> Result<Box<dyn CommandExecution>, command_execution_error> {
         let mut command = String::new();
         io::stdin().read_line(&mut command);

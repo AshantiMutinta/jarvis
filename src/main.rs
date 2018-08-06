@@ -38,7 +38,7 @@ fn post_message(message: &str, level: MessageLevel) {
     stdout.set_color(ColorSpec::new().set_fg(Some(log_message.1)));
     writeln!(&mut stdout, "{}", [log_message.0, ":", message].join(""));
 }
-fn listen_to_commands(com_channel: Channel::Channel) {
+fn listen_to_commands(com_channel: Channel::TransportLayerChannel) {
     post_message("ENTER OR VOICE COMMAND", MessageLevel::info);
     std::io::stdout().flush();
     let io_execution: Vec<(Box<CommandListen>, execution_order)> = vec![
@@ -116,7 +116,7 @@ fn main() {
     post_message("Starting JARVIS", MessageLevel::info);
     post_message("Checking for devices", MessageLevel::info);
     println!("=====================");
-    let mut com_channel = Channel::Channel::new("0.0.0.0:61000", "0.0.0.0:62345");
+    let mut com_channel = Channel::TransportLayerChannel::new("0.0.0.0:61000", "0.0.0.0:62345");
     match Device::set_up_devices(&mut com_channel) {
         Ok(devices) => {
             println!("Set up devices : devices {:?}", devices);

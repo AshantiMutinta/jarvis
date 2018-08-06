@@ -18,7 +18,7 @@ pub enum command_execution_error {
 }
 
 pub trait CommandExecution: Send + Sync {
-    fn execute(&self, &Channel::Channel) -> Result<(), command_execution_error>;
+    fn execute(&self, &Channel::TransportLayerChannel) -> Result<(), command_execution_error>;
 }
 
 struct StatusExec {
@@ -26,7 +26,10 @@ struct StatusExec {
 }
 
 impl CommandExecution for StatusExec {
-    fn execute(&self, com_channel: &Channel::Channel) -> Result<(), command_execution_error> {
+    fn execute(
+        &self,
+        com_channel: &Channel::TransportLayerChannel,
+    ) -> Result<(), command_execution_error> {
         unimplemented!("Have not implemented Status");
     }
 }
@@ -34,7 +37,10 @@ impl CommandExecution for StatusExec {
 struct stub {}
 
 impl CommandExecution for stub {
-    fn execute(&self, com_channel: &Channel::Channel) -> Result<(), command_execution_error> {
+    fn execute(
+        &self,
+        com_channel: &Channel::TransportLayerChannel,
+    ) -> Result<(), command_execution_error> {
         println!("Stub");
         Ok(())
     }
@@ -82,7 +88,7 @@ fn find_parent_command(command: &str) -> parent_command {
 pub trait CommandListen: Send + Sync {
     fn listen(
         &self,
-        com_channel: &Channel::Channel,
+        com_channel: &Channel::TransportLayerChannel,
     ) -> Result<Box<dyn CommandExecution>, command_execution_error>;
 }
 

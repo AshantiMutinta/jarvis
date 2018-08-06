@@ -3,7 +3,7 @@ extern crate time;
 
 use self::crc::{crc32, Hasher32};
 use std::io::Read;
-use Communication::Channel::Channel;
+use Communication::Channel;
 
 #[derive(Debug)]
 enum Status {
@@ -39,7 +39,9 @@ pub struct Device {
     status: Status,
 }
 
-pub fn set_up_devices<'a>(com_channel: &'a mut Channel) -> Result<Vec<Device>, device_error> {
+pub fn set_up_devices<'a>(
+    com_channel: &'a mut Channel::TransportLayerChannel,
+) -> Result<Vec<Device>, device_error> {
     match com_channel
         .write_udp_socket
         .connect("255.255.255.255:62344")
@@ -56,7 +58,9 @@ pub fn set_up_devices<'a>(com_channel: &'a mut Channel) -> Result<Vec<Device>, d
     }
 }
 
-fn retrieve_devices<'a>(com_channel: &'a mut Channel) -> Result<Vec<Device>, device_error> {
+fn retrieve_devices<'a>(
+    com_channel: &'a mut Channel::TransportLayerChannel,
+) -> Result<Vec<Device>, device_error> {
     let mut devices: Vec<Device> = vec![];
 
     let mut buffer = [0; 256];

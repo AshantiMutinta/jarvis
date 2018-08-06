@@ -13,25 +13,32 @@ pub enum socket_setup_error {
     could_not_set_broadcast,
 }
 
-pub struct Channel {
+pub struct TransportLayerChannel {
     pub read_udp_socket: UdpSocket,
     pub write_udp_socket: UdpSocket,
 }
 
-impl Channel {
-    pub fn new(read_IP: &str, write_IP: &str) -> Channel {
-        let com_channel = Channel {
+pub struct DataLinkLayerChannel
+{
+
+}
+
+impl TransportLayerChannel {
+    pub fn new(read_IP: &str, write_IP: &str) -> TransportLayerChannel {
+        let com_TransportLayerChannel = TransportLayerChannel {
             read_udp_socket: UdpSocket::bind(read_IP).expect("COULD NOT BIND TO UDP PACKET"),
             write_udp_socket: UdpSocket::bind(write_IP).expect("COULD NOT BIND SEND SOCKET"),
         };
 
-        set_up_socket(&com_channel.read_udp_socket).expect("could not set up read socket");
-        set_up_socket(&com_channel.write_udp_socket).expect("could not set up send socket");
-        com_channel
+        set_up_socket(&com_TransportLayerChannel.read_udp_socket)
+            .expect("could not set up read socket");
+        set_up_socket(&com_TransportLayerChannel.write_udp_socket)
+            .expect("could not set up send socket");
+        com_TransportLayerChannel
     }
 }
 
-impl io::Read for Channel {
+impl io::Read for TransportLayerChannel {
     fn read(&mut self, mut buffer: &mut [u8]) -> Result<usize, io::Error> {
         match self.read_udp_socket.recv_from(&mut buffer) {
             Ok(read_result) => match buffer.first() {
