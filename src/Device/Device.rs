@@ -2,8 +2,8 @@ extern crate crc;
 extern crate time;
 
 use self::crc::{crc32, Hasher32};
-use Communication::Channel::Channel;
 use std::io::Read;
+use Communication::Channel::Channel;
 
 #[derive(Debug)]
 enum Status {
@@ -62,8 +62,7 @@ fn retrieve_devices<'a>(com_channel: &'a mut Channel) -> Result<Vec<Device>, dev
     let mut buffer = [0; 256];
     //udp_socket.connect("0.0.0.0:56000").expect("Could not bind to 62344");
     match com_channel.read(&mut buffer) {
-        Ok(success) => match create_buffer_from_device(&buffer) 
-        {
+        Ok(success) => match create_buffer_from_device(&buffer) {
             Some(device_from_buffer) => {
                 devices.push(device_from_buffer);
                 match retrieve_devices(com_channel) {
@@ -79,8 +78,6 @@ fn retrieve_devices<'a>(com_channel: &'a mut Channel) -> Result<Vec<Device>, dev
         Err(e) => Err(device_error::could_not_recieve_device_packet),
     }
 }
-
-
 
 fn set_up_command_broadcast() -> [u8; 11] {
     let current_time = time::now();

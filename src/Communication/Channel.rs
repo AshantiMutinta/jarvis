@@ -1,10 +1,10 @@
 extern crate crc;
 
+use self::crc::{crc32, Hasher32};
 use std::io;
 use std::io::prelude::*;
 use std::net::UdpSocket;
 use std::time::Duration;
-use self::crc::{crc32, Hasher32};
 
 #[derive(Debug)]
 pub enum socket_setup_error {
@@ -31,35 +31,29 @@ impl Channel {
     }
 }
 
-
-
 impl io::Read for Channel {
-    fn read(&mut self, mut buffer: &mut [u8]) -> Result<usize,io::Error> {
-        match self.read_udp_socket.recv_from(&mut buffer) 
-        {
+    fn read(&mut self, mut buffer: &mut [u8]) -> Result<usize, io::Error> {
+        match self.read_udp_socket.recv_from(&mut buffer) {
             Ok(read_result) => match buffer.first() {
                 Some(first) => {
                     if (*first == 165u8) {
-                        match validate_checksum(buffer) 
-                        {
+                        match validate_checksum(buffer) {
                             Ok(validated_buffer) => Ok(buffer.len()),
-                            Err(_) =>
-                            {
-                                  Err(io::Error::new(io::ErrorKind::InvalidData,"MISMATCHED CHECKSUM"))
-                            }
+                            Err(_) => Err(io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                "MISMATCHED CHECKSUM",
+                            )),
                         }
-                    } 
-                    else 
-                    {
-                        Err(io::Error::new(io::ErrorKind::InvalidData,"PROTOCOL ERROR"))
+                    } else {
+                        Err(io::Error::new(io::ErrorKind::InvalidData, "PROTOCOL ERROR"))
                     }
                 }
-                None => Err(io::Error::new(io::ErrorKind::NotFound,"EMPTY BUFFER")),
+                None => Err(io::Error::new(io::ErrorKind::NotFound, "EMPTY BUFFER")),
             },
-            Err(_) => {
-
-                Err(io::Error::new(io::ErrorKind::BrokenPipe,"COULD NOT READ BUFFER"))
-            }
+            Err(_) => Err(io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "COULD NOT READ BUFFER",
+            )),
         }
     }
 }
