@@ -1,4 +1,5 @@
 extern crate crc;
+extern crate pnet;
 
 use self::crc::{crc32, Hasher32};
 use std::io;
@@ -18,10 +19,7 @@ pub struct TransportLayerChannel {
     pub write_udp_socket: UdpSocket,
 }
 
-pub struct DataLinkLayerChannel
-{
-
-}
+pub struct DataLinkLayerChannel {}
 
 impl TransportLayerChannel {
     pub fn new(read_IP: &str, write_IP: &str) -> TransportLayerChannel {

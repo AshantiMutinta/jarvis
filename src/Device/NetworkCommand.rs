@@ -23,7 +23,7 @@ impl CommandListen for NetworkInput {
                 Ok(str_command) => parse_command(&String::from(str_command)),
                 Err(_) => Err(command_execution_error::invalid_command),
             },
-            Err(_) => Err(command_execution_error::invalid_command),
+            Err(_) => Err(command_execution_error::timeout),
         }
     }
 }

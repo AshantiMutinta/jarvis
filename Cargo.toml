@@ -2,6 +2,7 @@
 name = "Jarvis"
 version = "0.1.1"
 authors = ["Ashanti Mutinta"]
+build = "build.rs"
 
 [dependencies]
 time = "0.1"
@@ -9,4 +10,6 @@ crc = "^1.0.0"
 termcolor = "0.3"
 num_cpus = "1.0"
 lazy_static = "1.0.2"
-pnet = "0.21.0"
+
+[dependencies.pnet]
+version = "0.21.0"

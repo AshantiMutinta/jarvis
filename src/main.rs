@@ -73,6 +73,9 @@ fn listen_to_commands(com_channel: Channel::TransportLayerChannel) {
                                     post_message("CHANNEL COULD NOT BE SEND", MessageLevel::error);
                                 }
                             },
+                            Err(Command::command_execution_error::timeout) => {
+                                ();
+                            }
                             Err(_) => {
                                 post_message("COULD NOT EXECUTE COMMAND", MessageLevel::error);
                             }

@@ -15,6 +15,7 @@ pub enum command_execution_error {
     empty_command,
     device_name_not_provided,
     invalid_command,
+    timeout,
 }
 
 pub trait CommandExecution: Send + Sync {
