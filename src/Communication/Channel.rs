@@ -1,6 +1,7 @@
 extern crate crc;
 extern crate pnet;
 
+use self::pnet::datalink::{self, NetworkInterface};
 use self::crc::{crc32, Hasher32};
 use std::io;
 use std::io::prelude::*;
@@ -19,7 +20,38 @@ pub struct TransportLayerChannel {
     pub write_udp_socket: UdpSocket,
 }
 
-pub struct DataLinkLayerChannel {}
+pub enum DataLinkError{
+    interface_error_not_available
+}
+
+pub struct DataLinkLayerChannel 
+{
+    datalink : NetworkInterface
+}
+
+impl DataLinkLayerChannel
+{
+    pub fn new(datalink_name:&str) -> Result<DataLinkLayerChannel,DataLinkError>
+    {
+        match datalink::interfaces().into_iter()
+              .filter(|net|{
+                  net.name == datalink_name
+              }).next()
+        {
+            Some(link)=>
+            {
+                Ok(DataLinkLayerChannel
+                {
+                    datalink : link
+                })
+            },
+            None =>
+            {
+                Err(DataLinkError::interface_error_not_available)
+            }
+        }
+    }
+}
 
 impl TransportLayerChannel {
     pub fn new(read_IP: &str, write_IP: &str) -> TransportLayerChannel {
@@ -33,6 +65,14 @@ impl TransportLayerChannel {
         set_up_socket(&com_TransportLayerChannel.write_udp_socket)
             .expect("could not set up send socket");
         com_TransportLayerChannel
+    }
+}
+
+impl io::Read for DataLinkLayerChannel
+{
+    fn read(&mut self, mut buffer: &mut [u8]) ->Result<usize, io::Error>
+    {
+        unimplemented!("READ HAS NOT BEEN IMPLEMENTED")
     }
 }
 
