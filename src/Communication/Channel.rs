@@ -1,12 +1,15 @@
 extern crate crc;
 extern crate pnet;
 
-use self::pnet::datalink::{self, NetworkInterface};
+use self::pnet::datalink::{self, NetworkInterface,Channel::Ethernet,Config};
+use self::pnet::packet::{Packet, MutablePacket,ethernet::{EthernetPacket,MutableEthernetPacket}};
+use self::pnet::util::MacAddr;
 use self::crc::{crc32, Hasher32};
 use std::io;
 use std::io::prelude::*;
 use std::net::UdpSocket;
 use std::time::Duration;
+
 
 #[derive(Debug)]
 pub enum socket_setup_error {
@@ -26,12 +29,14 @@ pub enum DataLinkError{
 
 pub struct DataLinkLayerChannel 
 {
-    datalink : NetworkInterface
+    datalink : NetworkInterface,
+    source_addr : MacAddr,
+    destination_addr : MacAddr
 }
 
 impl DataLinkLayerChannel
 {
-    pub fn new(datalink_name:&str) -> Result<DataLinkLayerChannel,DataLinkError>
+    pub fn new(datalink_name:&str,source_mac_addr : (u8,u8,u8,u8,u8,u8),dest_mac_addr : (u8,u8,u8,u8,u8,u8)) -> Result<DataLinkLayerChannel,DataLinkError>
     {
         match datalink::interfaces().into_iter()
               .filter(|net|{
@@ -42,7 +47,9 @@ impl DataLinkLayerChannel
             {
                 Ok(DataLinkLayerChannel
                 {
-                    datalink : link
+                    datalink : link,
+                    source_addr : MacAddr::new(source_mac_addr.0,source_mac_addr.1,source_mac_addr.2,source_mac_addr.3,source_mac_addr.4,source_mac_addr.5),
+                    destination_addr : MacAddr::new(dest_mac_addr.0,dest_mac_addr.1,dest_mac_addr.2,dest_mac_addr.3,dest_mac_addr.4,dest_mac_addr.5)
                 })
             },
             None =>
@@ -72,7 +79,63 @@ impl io::Read for DataLinkLayerChannel
 {
     fn read(&mut self, mut buffer: &mut [u8]) ->Result<usize, io::Error>
     {
-        unimplemented!("READ HAS NOT BEEN IMPLEMENTED")
+        let mut read_data_command = [165u8,2u8,01];
+        match datalink::channel(&self.datalink,Default::default())
+        {
+            Ok(Ethernet(mut tx, rx)) =>
+            {
+                match MutableEthernetPacket::new(&mut read_data_command.clone())
+                {
+                    Some(mut new_packet) =>
+                    {
+                            // Switch the source and destination
+                            new_packet.set_source(self.source_addr);
+                            new_packet.set_destination(self.destination_addr);
+
+                            match tx.send_to(new_packet.packet(),None)
+                            {
+                                Some(_) =>
+                                {
+                                    let mut bytes_read = read_data_command.len();
+                                    Ok(bytes_read)
+                                },
+                                None =>
+                                {
+                                    Err(io::Error::new(
+                                    io::ErrorKind::BrokenPipe,
+                                    "COULD NOT SEND READ DATA",
+                        )) 
+                                }
+                            }
+                    },
+                    None =>
+                    {
+                        Err(io::Error::new(
+                                io::ErrorKind::InvalidInput,
+                                "COULD NOT CREATE PACKET",
+                    ))
+                    }
+                   
+                   
+                }
+                
+            },
+            Ok(_) =>
+            {
+                Err(io::Error::new(
+                                io::ErrorKind::NotConnected,
+                                "INVALID CHANNEL TYPE",
+                    ))
+                     
+            },
+            Err(_) =>
+            {
+                Err(io::Error::new(
+                                io::ErrorKind::NotConnected,
+                                "COULD NOT CREATE CHANNEL",
+                    ))
+            }
+        }
     }
 }
 
