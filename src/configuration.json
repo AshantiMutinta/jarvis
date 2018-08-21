@@ -1,0 +1,4 @@
+{
+    "TCP" : {"readIO":62100,"writeIO":62345,"timeout":"30"},
+    "DataLink" : {"NetworkCards":["Example1"]}
+}

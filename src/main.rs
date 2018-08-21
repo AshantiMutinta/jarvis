@@ -1,10 +1,19 @@
 #[macro_use]
 extern crate lazy_static;
+
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
+
 extern crate Jarvis;
 extern crate num_cpus;
 extern crate termcolor;
 
-use std::io::Write;
+use std::env;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::{Error, ErrorKind, Write};
 use std::sync::{
     mpsc, mpsc::{Receiver, Sender}, Arc, Mutex,
 };
@@ -115,22 +124,89 @@ fn listen_to_commands(com_channel: Channel::TransportLayerChannel) {
     loop_result.join();
 }
 
+fn read_from_file(file_name: &str) -> Result<String, Error> {
+    match File::open(file_name) {
+        Ok(mut opened_file) => {
+            let mut contents = String::new();
+            match opened_file.read_to_string(&mut contents) {
+                Ok(bytes_read) => Ok(contents),
+                Err(_) => Err(Error::new(
+                    ErrorKind::InvalidData,
+                    "Could not read from file",
+                )),
+            }
+        }
+        Err(_) => Err(Error::new(ErrorKind::InvalidInput, "Could not find file")),
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct TCPConfiguration {
+    readIO: u32,
+    writeIO: u32,
+    timeout: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct DataLinkConfiguration {
+    NetworkCards: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Configuration {
+    TCP: TCPConfiguration,
+    DataLink: DataLinkConfiguration,
+}
+
+fn get_configuration(conf: &String) -> Result<Configuration, Error> {
+    match serde_json::from_str::<Configuration>(&conf) {
+        Ok(config) => Ok(config),
+        Err(_) => Err(Error::new(
+            ErrorKind::InvalidData,
+            "COULD NOT DESERIALIZE CONFIGURATION",
+        )),
+    }
+}
 fn main() {
     post_message("Starting JARVIS", MessageLevel::info);
     post_message("Checking for devices", MessageLevel::info);
     println!("=====================");
-    let mut com_channel = Channel::TransportLayerChannel::new("0.0.0.0:61000", "0.0.0.0:62345");
-    match Device::set_up_devices(&mut com_channel) {
-        Ok(devices) => {
-            println!("Set up devices : devices {:?}", devices);
-        }
-        Err(err) => {
-            post_message("JARVIS COULD NOT SET UP DEVICES", MessageLevel::error);
-        }
-    };
+    match env::args().next() {
+        Some(file_name) => match get_configuration(&file_name) {
+            Ok(config) => {
+                let mut com_channel =
+                    Channel::TransportLayerChannel::new("0.0.0.0:61000", "0.0.0.0:62345");
+                match Device::set_up_devices(&mut com_channel) {
+                    Ok(devices) => {
+                        println!("Set up devices : devices {:?}", devices);
+                    }
+                    Err(err) => {
+                        post_message("JARVIS COULD NOT SET UP DEVICES", MessageLevel::error);
+                    }
+                };
 
-    listen_to_commands(com_channel);
-    println!("=====================");
+                listen_to_commands(com_channel);
+                println!("=====================");
+            }
+            Err(_) => {
+                post_message("INVALID DATA IN CONFIGURATION FILE", MessageLevel::error);
+            }
+        },
+        None => {
+            post_message("COULD NOT FIND CONFIGURATION FILE", MessageLevel::error);
+        }
+    }
+}
+
+#[test]
+fn test_configuration() {
+    let test_configuration = String::from("{\"TCP\":{\"readIO\":12345,\"writeIO\":444,\"timeout\":30},\"DataLink\":{\"NetworkCards\":[\"Example1\"]}}");
+    let config =
+        get_configuration(&test_configuration).expect("test failed, was supposed to serialize");
+    assert_eq!(config.TCP.readIO, 12345);
+    assert_eq!(config.TCP.writeIO, 444);
+    assert_eq!(config.TCP.timeout, 30);
+    assert_eq!(config.DataLink.NetworkCards[0], "Example1");
 }
 
 lazy_static! {
