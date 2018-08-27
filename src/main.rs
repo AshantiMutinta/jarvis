@@ -31,11 +31,6 @@ enum MessageLevel {
     success,
 }
 
-enum execution_order {
-    sync,
-    async,
-}
-
 fn post_message(message: &str, level: MessageLevel) {
     let mut stdout = StandardStream::stdout(ColorChoice::Always);
     let log_message = match level {
@@ -50,18 +45,6 @@ fn post_message(message: &str, level: MessageLevel) {
 fn listen_to_commands(com_channel: Channel::TransportLayerChannel) {
     post_message("ENTER OR VOICE COMMAND", MessageLevel::info);
     std::io::stdout().flush();
-    let io_execution: Vec<(Box<CommandListen>, execution_order)> = vec![
-        (
-            Box::new(TextCommand::TextInput::new("")),
-            execution_order::async,
-        ),
-        (
-            Box::new(NetworkCommand::NetworkInput::new()),
-            execution_order::async,
-        ),
-    ];
-
-    //use tuple of (io,execution_order) to determine execution of application
     let channel = mpsc::channel();
     let thread_data = Arc::new(com_channel);
     let th = thread_data.clone();
@@ -71,28 +54,25 @@ fn listen_to_commands(com_channel: Channel::TransportLayerChannel) {
         .map(move |execution| {
             let th = th.clone();
             let send_clone_channel = send_clone_channel.clone();
-            match execution.1 {
-                execution_order::async => Some(thread::spawn(move || -> () {
-                    loop {
-                        let exec = execution.0.listen(&th);
-                        match exec {
-                            Ok(command) => match send_clone_channel.send(command) {
-                                Ok(com) => {}
-                                Err(_) => {
-                                    post_message("CHANNEL COULD NOT BE SEND", MessageLevel::error);
-                                }
-                            },
-                            Err(Command::command_execution_error::timeout) => {
-                                ();
-                            }
+            Some(thread::spawn(move || -> () {
+                loop {
+                    let exec = execution.listen(&th);
+                    match exec {
+                        Ok(command) => match send_clone_channel.send(command) {
+                            Ok(com) => {}
                             Err(_) => {
-                                post_message("COULD NOT EXECUTE COMMAND", MessageLevel::error);
+                                post_message("CHANNEL COULD NOT BE SEND", MessageLevel::error);
                             }
+                        },
+                        Err(Command::command_execution_error::timeout) => {
+                            ();
+                        }
+                        Err(_) => {
+                            post_message("COULD NOT EXECUTE COMMAND", MessageLevel::error);
                         }
                     }
-                })),
-                _ => None,
-            }
+                }
+            }))
         })
         .collect::<Vec<_>>();
 
@@ -174,8 +154,10 @@ fn main() {
     match env::args().next() {
         Some(file_name) => match get_configuration(&file_name) {
             Ok(config) => {
-                let mut com_channel =
-                    Channel::TransportLayerChannel::new("0.0.0.0:61000", "0.0.0.0:62345");
+                let mut com_channel = Channel::TransportLayerChannel::new(
+                    &vec!["0.0.0.0", &(*config.TCP.readIO.to_string())].join(""),
+                    &vec!["0.0.0.0", &(*config.TCP.writeIO.to_string())].join(""),
+                );
                 match Device::set_up_devices(&mut com_channel) {
                     Ok(devices) => {
                         println!("Set up devices : devices {:?}", devices);
@@ -210,16 +192,10 @@ fn test_configuration() {
 }
 
 lazy_static! {
-    static ref COMMAND_LISTENERS: Vec<(Box<CommandListen>, execution_order)> = {
+    static ref COMMAND_LISTENERS: Vec<Box<CommandListen>> = {
         vec![
-            (
-                Box::new(TextCommand::TextInput::new("")),
-                execution_order::async,
-            ),
-            (
-                Box::new(NetworkCommand::NetworkInput::new()),
-                execution_order::async,
-            ),
+            (Box::new(TextCommand::TextInput::new(""))),
+            (Box::new(NetworkCommand::NetworkInput::new())),
         ]
     };
 }
